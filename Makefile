@@ -3,10 +3,10 @@ OBJS_DIR		=	obj/
 LIB_DIR			=	lib/
 BIN_DIR			=	bin/
 
-LIBFT_SRCS		=	libft.a
+LIBFT_SRCS		=	bin/libft.a
 LIB_PATH		=	$(addprefix $(LIB_DIR), $(LIBFT_SRCS))
 
-SRCS			=	main.c
+SRCS			=	main.c clock.c
 SRCS_PATH		=	$(addprefix $(SRCS_DIR), $(SRCS))
 
 OBJS			=	${SRCS_PATH:.c=.o}
