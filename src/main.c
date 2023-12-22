@@ -104,29 +104,50 @@ void increaseSequence(struct icmp_header *header)
 	header->checksum = get_checksum((unsigned short *)header, sizeof(*header));
 }
 
+void printOutput(int bytesSend, int bytesReceiv, int time, char *buffer, int seq){
 
-int main (int argc, char **argv){
-	if (argc < 2)
-		return (0);
+	char ipv4[INET_ADDRSTRLEN];
+	struct ip_header ip = getIpv4Header(buffer);
+	struct icmp_header icmphdr = getIcmpHeader(buffer);
 
-	//-------------SOCKET INIT-----------
-	int icmp_socket;
-	size_t receivTime;
+	if (bytesReceiv == 0 || (bytesReceiv < 0 && ( errno == EAGAIN || errno == 60)))
+		printf("Ping timeout | ");
+	else if (bytesReceiv < 0)
+		printf("Ping error %d | ", errno);
+	else if (!(icmphdr.type == ICMP_ECHOREPLY && icmphdr.code == 0))
+		printf("bad icmp response | ");
+	else
+	{
+		ipv4ToString(ip.src_ip, ipv4);
+		printf("ttl=%d | Ping response from: '%s' | bytes=%lu ", ip.ttl, ipv4, bytesSend + sizeof(struct ip_header));
+	}
+	printf("seq=%d time=%dms\n", seq, time);
+
+}
+
+short loopNext(int size ,char *buffer, char *ip, int seq){
+
+	if (size == -1 && errno == EAGAIN) //no response
+		return 1;
+
+	char ipv4[INET_ADDRSTRLEN];
+
+	ipv4ToString(getIpv4Header(buffer).src_ip, ipv4);
+	if (getIcmpHeader(buffer).seq != seq) // is response is not for this seq
+		return 1;
+	if (size > 0 && strcmp(ip, ipv4)) // is response is not from the good ip
+		return 1;
+	return 0;
+}
+
+int loop(int socket, char *ipv4, struct addrinfo dest){
+
 	char buffer[1024];
-	struct addrinfo *dest;
 	struct msghdr receiveHeader;
 	struct icmp_header sendImcp_header;
 
-	icmp_socket = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
-		if (icmp_socket < 0)
-		return (fprintf(stderr, "socket error\n"));
-	
-
-	if (getaddrinfo(argv[1], NULL, NULL, &dest) != 0)
-		return (fprintf(stderr, "getaddrinfo error\n"));
-
-	sendImcp_header = initIcmpHeader(ICMP_ECHO);
 	receiveHeader = initMsgHeader();
+	sendImcp_header = initIcmpHeader(ICMP_ECHO);
 
 	struct iovec iov[1];
 	iov[0].iov_base = buffer;
@@ -135,40 +156,50 @@ int main (int argc, char **argv){
 
 	while (1)
 	{
-
-		if (sendto(icmp_socket, &sendImcp_header, sizeof(sendImcp_header), 0, dest->ai_addr, dest->ai_addrlen) < 0)
-			return (fprintf(stderr, "sendto error\n"));
-	
+		int bytesSend = 0;
+		int bytesReceiv = 0;
+		size_t receivTime = 0;
 		startClock();
-		size_t receivSize = recvmsg(icmp_socket, &receiveHeader, sizeof(buffer));
+
+		ft_memset(&buffer, 0, 1024);
+		bytesSend = sendto(socket, &sendImcp_header, sizeof(sendImcp_header), 0, dest.ai_addr, dest.ai_addrlen);
+		if (bytesSend < 0)
+			return (fprintf(stderr, "sendto error\n"));
+
+		while (getClock() < 1000)
+		{
+			bytesReceiv = recvmsg(socket, &receiveHeader, MSG_DONTWAIT);
+			if (!loopNext(bytesReceiv, buffer, ipv4, sendImcp_header.seq))
+				break;;
+		}
 		stopClock(&receivTime);
 
-		usleep((1000 - receivSize) * 1000);
+		usleep((800 - receivTime) * 1000);
 
-		struct ip_header ip = getIpv4Header(buffer);
-		struct icmp_header icmphdr = getIcmpHeader(buffer);
+		printOutput(bytesSend, bytesReceiv, receivTime, buffer, sendImcp_header.seq);
 
-		char ipv4[INET_ADDRSTRLEN];
-
-		ipv4ToString(ip.src_ip, ipv4),
-		
 		increaseSequence(&sendImcp_header);
-	
-		ft_memset(&buffer, 0, 1024);
-	
-		printf("Ping response | bites=%zu from='%s' icmp_seq=%d time=%zums\n", receivSize, ipv4, icmphdr.seq, receivTime);
 	}
+	return 0;
+}
 
-	//---------------GETTING INFOS----------------
+int main (int argc, char **argv){
 
-	// if (icmp_header->type == ICMP_ECHOREPLY && icmp_header->code == 0) //IS RESPONSE IS ECHO RETURN
-	// {
+	if (argc < 2)
+		return (0);
+	//-------------SOCKET INIT-----------
+	int icmp_socket;
+	struct addrinfo *dest;
+
+	icmp_socket = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
+		if (icmp_socket < 0)
+		return (fprintf(stderr, "socket error\n"));
 	
-	// }
+	if (getaddrinfo(argv[1], NULL, NULL, &dest) != 0)
+		return (fprintf(stderr, "getaddrinfo error\n"));
 
-
-	freeaddrinfo(dest);
-
+	// freeaddrinfo(dest);
+	loop(icmp_socket, argv[1], *dest);
 
 	return (1);
 }

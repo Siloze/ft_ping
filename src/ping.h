@@ -8,6 +8,7 @@
 #include <netdb.h>
 #include <netinet/ip_icmp.h>
 #include <sys/time.h>
+#include <errno.h>
 
 void startClock();
 void stopClock(size_t *finalTimer);
