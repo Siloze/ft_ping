@@ -113,7 +113,7 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 			bytes[1] = recvmsg(socket, &receiveHeader, MSG_DONTWAIT);
 			while (bytes[1] > 0 && flags[FLAG_FLOOD])
 			{
-				write(1, "\b", 1);
+				write(1, "\b \b", 3);
 				packetStat[1]++;
 				bytes[1] = recvmsg(socket, &receiveHeader, MSG_DONTWAIT);
 			}
