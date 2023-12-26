@@ -50,6 +50,18 @@ short loopNext(int size ,char *buffer, char *ip, int seq){
 	return 0;
 }
 
+void printHeader(char *ip, size_t *flags, int fd, struct addrinfo *ai){
+
+	if (flags[FLAG_VERBOSE])
+	{
+		printf("FT_PING: sock4.fd: %d (socktype: SOCK_RAW), hints.ai_family: AF_UNSPEC\n\nai->ai_family: ", fd);
+		printf("%s", ai->ai_family == AF_INET ? "AF_INET" : "AF_INET6");
+		printf(", ai->canonname: %s\n", ai->ai_canonname);
+	}
+
+	printf("FT_PING: %s: %lu data bytes\n", ip, sizeof(struct icmp_header) + sizeof(struct ip_header) + sizeof(struct mac_header));
+}
+
 int launchPing(int socket, struct addrinfo dest, size_t *flags){
 
 	int ttl = 0;
@@ -72,7 +84,7 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 	iov[0].iov_len = sizeof(buffer);
 	receiveHeader.msg_iov = &iov[0];
 
-	printf("FT_PING: %s: %lu data bytes\n", ipv4, sizeof(packet) + sizeof(struct ip_header) + sizeof(struct mac_header));
+	printHeader(ipv4, flags, socket, &dest);
 
 	doRun();
 	while (*doRun())
@@ -99,6 +111,12 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 		while (getClock() < 1000)
 		{
 			bytes[1] = recvmsg(socket, &receiveHeader, MSG_DONTWAIT);
+			while (bytes[1] > 0 && flags[FLAG_FLOOD])
+			{
+				write(1, "\b", 1);
+				packetStat[1]++;
+				bytes[1] = recvmsg(socket, &receiveHeader, MSG_DONTWAIT);
+			}
 			if (!loopNext(bytes[1], buffer, ipv4, sendImcp_header.seq) || flags[FLAG_FLOOD])
 				break;
 		}
@@ -112,33 +130,30 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 
 		packetStat[0]++;
 
-		switch (checkResponse(bytes[1], ttl, buffer, flags))
+		if (!flags[FLAG_FLOOD])
 		{
-		case 0:
-			if (!flags[FLAG_FLOOD])
+			switch (checkResponse(bytes[1], ttl, buffer, flags))
+			{
+			case 0:
 				printf("%lu bytes from %s: icmp_seq=%d ttl=%d time=%zums\n", sizeof(packet) + sizeof(struct ip_header) + sizeof(struct mac_header), ipv4, sendImcp_header.seq, getIpv4Header(buffer).ttl, receivTime);
-			else
-				write(1, "\b", 1);
-			packetStat[1]++;
-			break;
-		case 1:
-			if (!flags[FLAG_FLOOD])
+				packetStat[1]++;
+				break;
+			case 1:
 				printf("Request timeout for icmp_seq %d\n", sendImcp_header.seq);
-			if (flags[FLAG_VERBOSE])
-				sigHandler(0);
-			break;
-		case 2:
-			if (!flags[FLAG_FLOOD])
+				if (flags[FLAG_VERBOSE])
+					sigHandler(0);
+				break;
+			case 2:
 				printf("TTL expired in transit for icmp_seq %d\n", sendImcp_header.seq);
-			if (flags[FLAG_VERBOSE])
-				sigHandler(0);
-			break;
-		default:
-			if (!flags[FLAG_FLOOD])
+				if (flags[FLAG_VERBOSE])
+					sigHandler(0);
+				break;
+			default:
 				printf("Request error for icmp_seq %d\n", sendImcp_header.seq);
-			if (flags[FLAG_VERBOSE])
-				sigHandler(0);
-			break;
+				if (flags[FLAG_VERBOSE] && !flags[FLAG_FLOOD])
+					sigHandler(0);
+				break;
+			}
 		}
 
 		increaseSequence(&sendImcp_header);
@@ -182,7 +197,6 @@ int main (int argc, char **argv){
 	
 	if (getaddrinfo(findHost(&argv[1]), NULL, NULL, &dest) != 0) //get All adresse by hostname & ip
 		return (fprintf(stderr, "getaddrinfo error\n"));
-
 
 	 for (struct addrinfo *rp = dest; rp != NULL; rp = rp->ai_next) {
         if (rp->ai_family == AF_INET) { // IPv4
