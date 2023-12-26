@@ -1,137 +1,47 @@
 #include "ping.h"
 
-struct ip_header{
-	uint8_t version:4;
-	uint8_t ihl:4;
-	uint8_t service;
-	uint16_t len;
-	uint16_t id;
-	uint16_t flags:3;
-	uint16_t frag_offset:13;
-	uint8_t ttl;
-	uint8_t protocol;
-	uint16_t checksum;
-	uint32_t src_ip;
-	uint32_t dst_ip;
-};
+short *doRun(){
+	static short run = 1;
 
-
-struct icmp_header {
-	uint8_t type;
-	uint8_t code;
-	uint16_t checksum;
-	uint16_t id;
-	uint16_t seq;
-};
-
-
-void printIpAddress(struct ip_header *ip){
-struct in_addr src_addr, dest_addr;
-
-	src_addr.s_addr = ip->src_ip;
-	dest_addr.s_addr = ip->dst_ip;
-
-	char src_ip[INET_ADDRSTRLEN];
-	char dest_ip[INET_ADDRSTRLEN];
-
-	inet_ntop(AF_INET, &src_addr, src_ip, INET_ADDRSTRLEN);
-	inet_ntop(AF_INET, &dest_addr, dest_ip, INET_ADDRSTRLEN);
-
-	printf("src ip : %s\n", src_ip);
-	printf("dest ip : %s\n", dest_ip);
+	return &run;
 }
 
-void ipv4ToString(uint32_t ip, char *dest){
-	struct in_addr src_addr;
+int checkInput(char **argv){
+	int i = 0;
+	int j = 0;
 
-	src_addr.s_addr = ip;
-	inet_ntop(AF_INET, &src_addr, dest, INET_ADDRSTRLEN);
-}
-
-unsigned short get_checksum(unsigned short *data, size_t length){
-    unsigned long sum = 0;
-    while (length > 1) {
-        sum += *data++;
-        length -= 2;
-    }
-    if (length > 0) {
-        sum += *(unsigned char *)data;
-    }
-    sum = (sum >> 16) + (sum & 0xFFFF);
-    sum += (sum >> 16);
-    return (unsigned short)(~sum);
-}
-
-struct msghdr initMsgHeader()
-{
-	struct msghdr header;
-
-	header.msg_name = NULL;
-	header.msg_namelen = 0;
-	header.msg_iovlen = 1;
-	header.msg_control = NULL;
-	header.msg_controllen = 0;
-	return (header);
-}
-
-struct ip_header getIpv4Header(char * buffer){
-	struct ip_header *header = (struct ip_header *)buffer;
-	return *header;
-}
-
-struct icmp_header getIcmpHeader(char * buffer){
-	struct icmp_header *header = (struct icmp_header *)(buffer + sizeof(struct ip_header));
-	return *header;
-}
-
-struct icmp_header initIcmpHeader(uint8_t type){
-	struct icmp_header header;
-
-	header.type = type;
-	header.code = 0;
-	header.checksum = 0;
-	header.id = getpid();
-	header.seq = 0;
-	header.checksum = get_checksum((unsigned short *)&header, sizeof(header));
-
-	return (header);
-}
-
-void increaseSequence(struct icmp_header *header)
-{
-	header->seq++;
-	header->checksum = 0;
-	header->checksum = get_checksum((unsigned short *)header, sizeof(*header));
-}
-
-void printOutput(int bytesSend, int bytesReceiv, int time, char *buffer, int seq){
-
-	char ipv4[INET_ADDRSTRLEN];
-	struct ip_header ip = getIpv4Header(buffer);
-	struct icmp_header icmphdr = getIcmpHeader(buffer);
-
-	if (bytesReceiv == 0 || (bytesReceiv < 0 && ( errno == EAGAIN || errno == 60)))
-		printf("Ping timeout | ");
-	else if (bytesReceiv < 0)
-		printf("Ping error %d | ", errno);
-	else if (!(icmphdr.type == ICMP_ECHOREPLY && icmphdr.code == 0))
-		printf("bad icmp response | ");
-	else
+	while (argv[i])
 	{
-		ipv4ToString(ip.src_ip, ipv4);
-		printf("ttl=%d | Ping response from: '%s' | bytes=%lu ", ip.ttl, ipv4, bytesSend + sizeof(struct ip_header));
+		while (argv[i][j])
+		{
+			if (!ft_isdigit(argv[i][j]))
+				return (1);
+			j++;
+		}
+		i++;
 	}
-	printf("seq=%d time=%dms\n", seq, time);
+	return (0);
+}
 
+int checkResponse(int bytesReceiv, int ttl, char *buffer, size_t *flags){
+
+	struct icmp_header icmp = getIcmpHeader(buffer);
+
+	if (buffer[0] && (flags[FLAG_VERBOSE] || (icmp.type == ICMP_ECHOREPLY && icmp.code == 0)))
+		return 0;
+	if (bytesReceiv == 0 || (bytesReceiv < 0 && ( errno == EAGAIN || errno == 60)))
+		return 1;
+	if (ttl == 0 || getIpv4Header(buffer).ttl != ttl)
+		return 2;
+	return 3;
 }
 
 short loopNext(int size ,char *buffer, char *ip, int seq){
 
-	if (size == -1 && errno == EAGAIN) //no response
+	if (size == -1 && errno == EAGAIN ) //no response
 		return 1;
 
 	char ipv4[INET_ADDRSTRLEN];
-
 	ipv4ToString(getIpv4Header(buffer).src_ip, ipv4);
 	if (getIcmpHeader(buffer).seq != seq) // is response is not for this seq
 		return 1;
@@ -140,66 +50,140 @@ short loopNext(int size ,char *buffer, char *ip, int seq){
 	return 0;
 }
 
-int loop(int socket, char *ipv4, struct addrinfo dest){
+int launchPing(int socket, struct addrinfo dest, size_t *flags){
 
-	char buffer[1024];
+	int ttl = 0;
+	char ipv4[INET_ADDRSTRLEN];
 	struct msghdr receiveHeader;
+	char buffer[MSG_BUFFER_SIZE];
 	struct icmp_header sendImcp_header;
 
-	receiveHeader = initMsgHeader();
+	char packet[sizeof (struct icmp_header)];
+	int packetStat[2] = {0, 0};
+
+	receiveHeader = initMsgHeader(&buffer);
 	sendImcp_header = initIcmpHeader(ICMP_ECHO);
+	memset(&packet, 1, sizeof(packet));
+
+	ipv4ToString(((struct sockaddr_in *)dest.ai_addr)->sin_addr.s_addr, ipv4);
 
 	struct iovec iov[1];
 	iov[0].iov_base = buffer;
 	iov[0].iov_len = sizeof(buffer);
 	receiveHeader.msg_iov = &iov[0];
 
-	while (1)
-	{
-		int bytesSend = 0;
-		int bytesReceiv = 0;
-		size_t receivTime = 0;
-		startClock();
+	printf("FT_PING: %s: %lu data bytes\n", ipv4, sizeof(packet) + sizeof(struct ip_header) + sizeof(struct mac_header));
 
-		ft_memset(&buffer, 0, 1024);
-		bytesSend = sendto(socket, &sendImcp_header, sizeof(sendImcp_header), 0, dest.ai_addr, dest.ai_addrlen);
-		if (bytesSend < 0)
+	doRun();
+	while (*doRun())
+	{
+		int bytes[2] = {0, 0};
+		size_t receivTime = 0;
+
+		ft_memset(&buffer, 0, MSG_BUFFER_SIZE);
+		memcpy(&packet, &sendImcp_header, sizeof(sendImcp_header));
+
+
+		//-----------PAQUET SEND---------
+		startClock();
+		bytes[0] = sendto(socket, packet, sizeof(packet), 0, dest.ai_addr, dest.ai_addrlen);
+		if (bytes[0] < 0)
 			return (fprintf(stderr, "sendto error\n"));
+		if (flags[FLAG_FLOOD])
+			printf(".");
 
 		while (getClock() < 1000)
 		{
-			bytesReceiv = recvmsg(socket, &receiveHeader, MSG_DONTWAIT);
-			if (!loopNext(bytesReceiv, buffer, ipv4, sendImcp_header.seq))
-				break;;
+			bytes[1] = recvmsg(socket, &receiveHeader, MSG_DONTWAIT);
+			if (!loopNext(bytes[1], buffer, ipv4, sendImcp_header.seq))
+				break;
 		}
 		stopClock(&receivTime);
 
-		usleep((800 - receivTime) * 1000);
+		if (!flags[FLAG_FLOOD])
+			usleep((1000 - receivTime) * 1000);
 
-		printOutput(bytesSend, bytesReceiv, receivTime, buffer, sendImcp_header.seq);
+		if (!ttl)
+			ttl = getIpv4Header(buffer).ttl;
+
+		packetStat[0]++;
+
+		switch (checkResponse(bytes[1], ttl, buffer, flags))
+		{
+		case 0:
+			if (!flags[FLAG_FLOOD])
+				printf("%lu bytes from %s: icmp_seq=%d ttl=%d time=%zums\n", sizeof(packet) + sizeof(struct ip_header) + sizeof(struct mac_header), ipv4, sendImcp_header.seq, getIpv4Header(buffer).ttl, receivTime);
+			else
+				printf("\b");
+			packetStat[1]++;
+			break;
+		case 1:
+			printf("Request timeout for icmp_seq %d\n", sendImcp_header.seq);
+			if (flags[FLAG_VERBOSE])
+				sigHandler(0);
+			break;
+		case 2:
+			printf("TTL expired in transit for icmp_seq %d\n", sendImcp_header.seq);
+			if (flags[FLAG_VERBOSE])
+				sigHandler(0);
+			break;
+		default:
+			printf("Request error for icmp_seq %d\n", sendImcp_header.seq);
+			if (flags[FLAG_VERBOSE])
+				sigHandler(0);
+			break;
+		}
 
 		increaseSequence(&sendImcp_header);
+
 	}
+
+    printf("\n--- %s ft_ping statistics ---\n", ipv4);
+    printf("%d packets transmitted, %d received, %d%% packet loss\n", packetStat[0], packetStat[1], (packetStat[0] - packetStat[1]) * 100 / packetStat[0]);
+
 	return 0;
 }
 
-int main (int argc, char **argv){
+size_t *initFlags(char **argv){
+	size_t *flags = malloc(sizeof(size_t) * FLAGS_NB);
 
-	if (argc < 2)
-		return (0);
-	//-------------SOCKET INIT-----------
+	flags[FLAG_VERBOSE] = findArg(argv, "-v") ? 1 : 0;
+	flags[FLAG_FLOOD] = findArg(argv, "-f") ? 1 : 0;
+
+	return (flags);
+}
+
+int main (int argc, char **argv){
+	size_t *flags;
 	int icmp_socket;
 	struct addrinfo *dest;
 
-	icmp_socket = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
-		if (icmp_socket < 0)
-		return (fprintf(stderr, "socket error\n"));
+	flags = initFlags(&argv[1]);
+
+	if (argc < 2)
+		return (0);
+	if (!checkInput(&argv[1]))
+		return(printf("Bad input: ping [-v | -f] <ip/hostname>\n"));
+	if (argc > 2 && !memchr(flags, 1, sizeof(size_t) * FLAGS_NB))
+		return (printf("Bad flag: [-v | -f]\n"));
 	
-	if (getaddrinfo(argv[1], NULL, NULL, &dest) != 0)
+	signal(SIGINT, sigHandler);
+
+	icmp_socket = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
+	if (icmp_socket < 0)
+		return (socket_error(errno));
+	
+	if (getaddrinfo(findHost(&argv[1]), NULL, NULL, &dest) != 0) //get All adresse by hostname & ip
 		return (fprintf(stderr, "getaddrinfo error\n"));
 
-	// freeaddrinfo(dest);
-	loop(icmp_socket, argv[1], *dest);
+
+	 for (struct addrinfo *rp = dest; rp != NULL; rp = rp->ai_next) {
+        if (rp->ai_family == AF_INET) { // IPv4
+			launchPing(icmp_socket, *rp, flags);
+			freeaddrinfo(dest);
+			return (0);
+        }
+    }
 
 	return (1);
 }
