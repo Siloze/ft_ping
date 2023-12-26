@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../lib/includes/libft.h"
+#include "../libft/includes/libft.h"
 #include "stdio.h"
 #include <arpa/inet.h>
 #include <sys/types.h>

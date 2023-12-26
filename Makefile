@@ -1,6 +1,6 @@
 SRCS_DIR		=	src/
 OBJS_DIR		=	obj/
-LIB_DIR			=	lib/
+LIB_DIR			=	libft/
 BIN_DIR			=	bin/
 
 LIBFT_SRCS		=	bin/libft.a
