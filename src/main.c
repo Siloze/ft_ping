@@ -28,7 +28,7 @@ int getStackSize(int *stack, int stopNumber){
 
 	while (stack[++i] != stopNumber && stack[i])
 		;
-	return (i);
+	return (i + 1);
 }
 
 int checkResponse(int bytesReceiv, int ttl, char *buffer, size_t *flags){
@@ -53,7 +53,6 @@ short retry(int size ,char *buffer, char *ip, int seq){
 
 	char ipv4[INET_ADDRSTRLEN];
 	ipv4ToString(getIpv4Header(buffer).src_ip, ipv4);
-		printf("retry size: %d, ipv4: %s, seq: %d\n", size, ipv4, seq);
 	if (getIcmpHeader(buffer).seq != seq) // is response is not for this seq
 		return 1;
 	if (size > 0 && strcmp(ip, ipv4)) // is response is not from the good ip
@@ -100,11 +99,11 @@ void printResponse(int *bytes, int ttl, char *buffer, char *ipv4, struct icmp_he
 
 void increaseStack(int *stack, int value){
 	stack = realloc(stack, sizeof(int) * getStackSize(stack, -1) + 1);
-	stack[getStackSize(stack, -1)] = value;
-	stack[getStackSize(stack, -1) + 1] = -1;
+	stack[getStackSize(stack, -1) - 1] = value;
+	stack[getStackSize(stack, -1)] = -1;
 }
 
-size_t loop(int *receivBytes, struct msghdr *receiveHeader, char *buffer, char *ipv4, struct icmp_header sendImcp_header, int socket, int *msStack)
+size_t loop(int *receivBytes, struct msghdr *receiveHeader, char *buffer, char *ipv4, struct icmp_header sendImcp_header, int socket, int **msStack)
 {
 	size_t receivTime = 0;
 	startClock();
@@ -113,7 +112,10 @@ size_t loop(int *receivBytes, struct msghdr *receiveHeader, char *buffer, char *
 		*receivBytes = recvmsg(socket, receiveHeader, MSG_DONTWAIT);
 		if (!retry(*receivBytes, buffer, ipv4, sendImcp_header.seq))
 		{
-			increaseStack(msStack, getClock());
+			*msStack = realloc(*msStack, sizeof(int) * getStackSize(*msStack, -1) + 1);
+			msStack[0][getStackSize(*msStack, -1) - 1] = getClock();
+			msStack[0][getStackSize(*msStack, -1)] = -1;
+			// increaseStack(msStack, getClock());
 			break;
 		}
 	}
@@ -122,7 +124,7 @@ size_t loop(int *receivBytes, struct msghdr *receiveHeader, char *buffer, char *
 	return (receivTime);
 }
 
-void flood_loop(int *receiveBytes, int *packetReceiv, int socket, struct msghdr *receiveHeader, int *msStack)
+void flood_loop(int *receiveBytes, int *packetReceiv, int socket, struct msghdr *receiveHeader, int **msStack)
 {
 	size_t time = 0;
 
@@ -133,7 +135,10 @@ void flood_loop(int *receiveBytes, int *packetReceiv, int socket, struct msghdr 
 	while (*receiveBytes > 0)
 	{
 		stopClock(&time);
-		increaseStack(msStack, time);
+		// increaseStack(&msStack, time);
+		*msStack = realloc(*msStack, sizeof(int) * getStackSize(*msStack, -1) + 1);
+		msStack[0][getStackSize(*msStack, -1) - 1] = getClock();
+		msStack[0][getStackSize(*msStack, -1)] = -1;
 		write(1, "\b \b", 3);
 		*packetReceiv += 1;
 		*receiveBytes = recvmsg(socket, receiveHeader, MSG_DONTWAIT);
@@ -143,19 +148,21 @@ void flood_loop(int *receiveBytes, int *packetReceiv, int socket, struct msghdr 
 }
 
 float getStandartDeviation(int *msStack){
-	int averrage = 0;
-	int i = -1;
-	int size = getStackSize(msStack, -1);
-	float standartDeviation = 0;
+	(void)msStack;
+	return (1);
+	// int averrage = 0;
+	// int i = -1;
+	// int size = getStackSize(msStack, -1);
+	// float standartDeviation = 0;
 
-	while (msStack[++i] != -1)
-		averrage += msStack[i];
-	averrage /= size;
-	i = -1;
-	while (msStack[++i] != -1)
-		standartDeviation += pow(msStack[i] - averrage, 2);
-	standartDeviation /= size;
-	return (sqrt(standartDeviation));
+	// while (msStack[++i] != -1)
+	// 	averrage += msStack[i];
+	// averrage /= size;
+	// i = -1;
+	// while (msStack[++i] != -1)
+	// 	standartDeviation += pow(msStack[i] - averrage, 2);
+	// standartDeviation /= size;
+	// return (sqrt(standartDeviation));
 }
 
 void printStat(int *packetStat, int *msStack, char *ipv4){
@@ -163,7 +170,7 @@ void printStat(int *packetStat, int *msStack, char *ipv4){
 	int max = 0;
 	int min = 99999;
 
-	for (int i = 0; i < getStackSize(msStack, -1); i++) {
+	for (int i = 0; i < getStackSize(msStack, -1) - 1; i++) {
 		averrage += msStack[i];
 		if (min > msStack[i])
 			min = msStack[i];
@@ -175,7 +182,7 @@ void printStat(int *packetStat, int *msStack, char *ipv4){
     printf("%d packets transmitted, %d received, %d%% packet loss\n", packetStat[0], packetStat[1], (packetStat[0] - packetStat[1]) * 100 / packetStat[0]);
 
 	if (getStackSize(msStack, -1)){
-		printf("rtt min/avg/max/stddev = %d/%d/%d/%f ms\n", min, averrage, max, getStandartDeviation(msStack));
+		printf("rtt min/avg/max/stddev = %d/%d/%d/%d ms\n", min, averrage, max, (int)getStandartDeviation(msStack));
 	}
 }
 
@@ -220,9 +227,9 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 			return (fprintf(stderr, "sendto error\n"));
 
 		if (flags[FLAG_FLOOD])
-			flood_loop(&bytes[1], &packetStat[1], socket, &receiveHeader, msStack);
+			flood_loop(&bytes[1], &packetStat[1], socket, &receiveHeader, &msStack);
 		else
-			receivTime = loop(&bytes[1], &receiveHeader, buffer, ipv4, sendImcp_header, socket, msStack);
+			receivTime = loop(&bytes[1], &receiveHeader, buffer, ipv4, sendImcp_header, socket, &msStack);
 		if (!ttl)
 			ttl = getIpv4Header(buffer).ttl;
 
