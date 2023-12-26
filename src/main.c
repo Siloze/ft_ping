@@ -200,6 +200,7 @@ int main (int argc, char **argv){
 
 	 for (struct addrinfo *rp = dest; rp != NULL; rp = rp->ai_next) {
         if (rp->ai_family == AF_INET) { // IPv4
+			rp->ai_canonname = findHost(&argv[1]);
 			launchPing(icmp_socket, *rp, flags);
 			freeaddrinfo(dest);
 			return (0);
