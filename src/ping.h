@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <signal.h>
+#include <math.h>
 
 #define PACKET_SIZE 58
 #define MSG_BUFFER_SIZE 1024
@@ -54,6 +55,7 @@ struct icmp_header getIcmpHeader(char * buffer);
 void startClock();
 void stopClock(size_t *finalTimer);
 size_t getClock();
+void resetClock();
 void sigHandler(int sig_num);
 struct icmp_header initIcmpHeader(uint8_t type);
 struct msghdr initMsgHeader(char (*buffer)[MSG_BUFFER_SIZE]);
