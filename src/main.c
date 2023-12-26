@@ -14,7 +14,7 @@ int checkInput(char **argv){
 	{
 		while (argv[i][j])
 		{
-			if (!ft_isdigit(argv[i][j]))
+			if (!isdigit(argv[i][j]))
 				return (1);
 			j++;
 		}
@@ -80,7 +80,7 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 		int bytes[2] = {0, 0};
 		size_t receivTime = 0;
 
-		ft_memset(&buffer, 0, MSG_BUFFER_SIZE);
+		memset(&buffer, 0, MSG_BUFFER_SIZE);
 		memcpy(&packet, &sendImcp_header, sizeof(sendImcp_header));
 
 
@@ -89,13 +89,17 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 		bytes[0] = sendto(socket, packet, sizeof(packet), 0, dest.ai_addr, dest.ai_addrlen);
 		if (bytes[0] < 0)
 			return (fprintf(stderr, "sendto error\n"));
+		
 		if (flags[FLAG_FLOOD])
-			printf(".");
+		{
+			write(1, ".", 1);
+			usleep(10000); // 10ms
+		}
 
 		while (getClock() < 1000)
 		{
 			bytes[1] = recvmsg(socket, &receiveHeader, MSG_DONTWAIT);
-			if (!loopNext(bytes[1], buffer, ipv4, sendImcp_header.seq))
+			if (!loopNext(bytes[1], buffer, ipv4, sendImcp_header.seq) || flags[FLAG_FLOOD])
 				break;
 		}
 		stopClock(&receivTime);
@@ -114,21 +118,24 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 			if (!flags[FLAG_FLOOD])
 				printf("%lu bytes from %s: icmp_seq=%d ttl=%d time=%zums\n", sizeof(packet) + sizeof(struct ip_header) + sizeof(struct mac_header), ipv4, sendImcp_header.seq, getIpv4Header(buffer).ttl, receivTime);
 			else
-				printf("\b");
+				write(1, "\b", 1);
 			packetStat[1]++;
 			break;
 		case 1:
-			printf("Request timeout for icmp_seq %d\n", sendImcp_header.seq);
+			if (!flags[FLAG_FLOOD])
+				printf("Request timeout for icmp_seq %d\n", sendImcp_header.seq);
 			if (flags[FLAG_VERBOSE])
 				sigHandler(0);
 			break;
 		case 2:
-			printf("TTL expired in transit for icmp_seq %d\n", sendImcp_header.seq);
+			if (!flags[FLAG_FLOOD])
+				printf("TTL expired in transit for icmp_seq %d\n", sendImcp_header.seq);
 			if (flags[FLAG_VERBOSE])
 				sigHandler(0);
 			break;
 		default:
-			printf("Request error for icmp_seq %d\n", sendImcp_header.seq);
+			if (!flags[FLAG_FLOOD])
+				printf("Request error for icmp_seq %d\n", sendImcp_header.seq);
 			if (flags[FLAG_VERBOSE])
 				sigHandler(0);
 			break;

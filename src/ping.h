@@ -9,6 +9,8 @@
 #include <netinet/ip_icmp.h>
 #include <sys/time.h>
 #include <errno.h>
+#include <ctype.h>
+#include <signal.h>
 
 #define PACKET_SIZE 58
 #define MSG_BUFFER_SIZE 1024
