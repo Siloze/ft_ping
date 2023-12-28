@@ -112,10 +112,11 @@ size_t loop(int *receivBytes, struct msghdr *receiveHeader, char *buffer, char *
 		*receivBytes = recvmsg(socket, receiveHeader, MSG_DONTWAIT);
 		if (!retry(*receivBytes, buffer, ipv4, sendImcp_header.seq))
 		{
+			int stackSize = getStackSize(*msStack, -1);
 			printf("getStackSize: %d\n", getStackSize(*msStack, -1));
-			*msStack = realloc(*msStack, sizeof(int) * getStackSize(*msStack, -1) + 1);
-			msStack[0][getStackSize(*msStack, -1) - 1] = getClock();
-			msStack[0][getStackSize(*msStack, -1)] = -1;
+			*msStack = realloc(*msStack, sizeof(int) * stackSize + 1);
+			msStack[0][stackSize - 1] = getClock();
+			msStack[0][stackSize] = -1;
 			printf("NewGetStackSize: %d\n", getStackSize(*msStack, -1));
 			// increaseStack(msStack, getClock());
 			break;
