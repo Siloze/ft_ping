@@ -120,7 +120,8 @@ size_t loop(int *receivBytes, struct msghdr *receiveHeader, char *buffer, char *
 		}
 	}
 	stopClock(&receivTime);
-	usleep((1000 - receivTime) * 1000);
+	for (int i = 0; i < 1000 && *doRun(); i += 1)
+		usleep((1000 - receivTime));
 	return (receivTime);
 }
 

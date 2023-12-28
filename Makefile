@@ -22,6 +22,7 @@ $(OBJS_DIR)%.o	: $(SRCS_DIR)%.c
 				$(CC) $(CFLAGS) -c $< -o ${addprefix $(OBJS_DIR), ${<:$(SRCS_DIR)%.c=%.o}}
 
 ${NAME_PATH}	: ${OBJS_PATH}
+				mkdir bin
 				cd $(LIB_DIR) && make
 				$(CC) $(CFLAGS)  ${LIB_PATH} $(OBJS_PATH) -o $(NAME_PATH)
 
