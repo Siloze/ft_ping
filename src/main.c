@@ -149,21 +149,19 @@ void flood_loop(int *receiveBytes, int *packetReceiv, int socket, struct msghdr 
 }
 
 float getStandartDeviation(int *msStack){
-	(void)msStack;
-	return (1);
-	// int averrage = 0;
-	// int i = -1;
-	// int size = getStackSize(msStack, -1);
-	// float standartDeviation = 0;
+	int averrage = 0;
+	int i = -1;
+	int size = getStackSize(msStack, -1);
+	float standartDeviation = 0;
 
-	// while (msStack[++i] != -1)
-	// 	averrage += msStack[i];
-	// averrage /= size;
-	// i = -1;
-	// while (msStack[++i] != -1)
-	// 	standartDeviation += pow(msStack[i] - averrage, 2);
-	// standartDeviation /= size;
-	// return (sqrt(standartDeviation));
+	while (msStack[++i] != -1)
+		averrage += msStack[i];
+	averrage /= size;
+	i = -1;
+	while (msStack[++i] != -1)
+		standartDeviation += pow(msStack[i] - averrage, 2);
+	standartDeviation /= size;
+	return (sqrt(standartDeviation));
 }
 
 void printStat(int *packetStat, int *msStack, char *ipv4){
