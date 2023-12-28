@@ -1,4 +1,4 @@
-#include "ping.h"
+#include "includes/ping.h"
 
 void ipv4ToString(uint32_t ip, char *dest){
 	struct in_addr src_addr;
@@ -38,7 +38,7 @@ char *findArg(char **argv, char *arg){
 	int i = -1;
 
 	while (argv[++i])
-		if (!strcmp(argv[i], arg))
+		if (!ft_strcmp(argv[i], arg))
 			return (argv[i]);
 	return (0);
 }

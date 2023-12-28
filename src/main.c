@@ -1,4 +1,4 @@
-#include "ping.h"
+#include "includes/ping.h"
 
 short *doRun(){
 	static short run = 1;
@@ -14,7 +14,7 @@ int checkInput(char **argv){
 	{
 		while (argv[i][j])
 		{
-			if (!isdigit(argv[i][j]))
+			if (!ft_isdigit(argv[i][j]))
 				return (1);
 			j++;
 		}
@@ -49,13 +49,11 @@ short retry(int size ,char *buffer, char *ip, int seq){
 	if (size == -1 && errno == EAGAIN ) //no response
 		return 1;
 
-
-
 	char ipv4[INET_ADDRSTRLEN];
 	ipv4ToString(getIpv4Header(buffer).src_ip, ipv4);
 	if (getIcmpHeader(buffer).seq != seq) // is response is not for this seq
 		return 1;
-	if (size > 0 && strcmp(ip, ipv4)) // is response is not from the good ip
+	if (size > 0 && ft_strcmp(ip, ipv4)) // is response is not from the good ip
 		return 1;
 	return 0;
 }
@@ -65,8 +63,7 @@ void printHeader(char *ip, size_t *flags, int fd, struct addrinfo *ai){
 	if (flags[FLAG_VERBOSE])
 	{
 		printf("FT_PING: sock4.fd: %d (socktype: SOCK_RAW), hints.ai_family: AF_UNSPEC\n\nai->ai_family: ", fd);
-		printf("%s", ai->ai_family == AF_INET ? "AF_INET" : "AF_INET6");
-		printf(", ai->canonname: %s\n", ai->ai_canonname);
+		printf("%s", ai->ai_family == AF_INET ? "AF_INET\n" : "AF_INET6\n");
 	}
 
 	printf("FT_PING: %s: %lu data bytes\n", ip, sizeof(struct icmp_header) + sizeof(struct ip_header) + sizeof(struct mac_header));
@@ -195,7 +192,7 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 
 	receiveHeader = initMsgHeader(&buffer);
 	sendImcp_header = initIcmpHeader(ICMP_ECHO);
-	memset(&packet, 1, sizeof(packet));
+	ft_memset(&packet, 1, sizeof(packet));
 
 	ipv4ToString(((struct sockaddr_in *)dest.ai_addr)->sin_addr.s_addr, ipv4);
 
@@ -212,13 +209,16 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 		int bytes[2] = {0, 0};
 		size_t receivTime = 0;
 
-		memset(&buffer, 0, MSG_BUFFER_SIZE);
-		memcpy(&packet, &sendImcp_header, sizeof(sendImcp_header));
+		ft_memset(&buffer, 0, MSG_BUFFER_SIZE);
+		ft_memcpy(&packet, &sendImcp_header, sizeof(sendImcp_header));
 
 		//-----------PAQUET SEND---------
 		bytes[0] = sendto(socket, packet, sizeof(packet), 0, dest.ai_addr, dest.ai_addrlen);
 		if (bytes[0] < 0)
-			return (fprintf(stderr, "sendto error\n"));
+		{
+			fprintf(stderr, "packet send error\n");
+			break;
+		}
 
 		if (flags[FLAG_FLOOD])
 			flood_loop(&bytes[1], &packetStat[1], socket, &receiveHeader, &msStack);
@@ -260,7 +260,7 @@ int main (int argc, char **argv){
 		return (0);
 	if (!checkInput(&argv[1]))
 		return(printf("Bad input: ping [-v | -f] <ip/hostname>\n"));
-	if (argc > 2 && !memchr(flags, 1, sizeof(size_t) * FLAGS_NB))
+	if (argc > 2 && !ft_memchr(flags, 1, sizeof(size_t) * FLAGS_NB))
 		return (printf("Bad flag: [-v | -f]\n"));
 	
 	signal(SIGINT, sigHandler);
@@ -274,7 +274,6 @@ int main (int argc, char **argv){
 
 	 for (struct addrinfo *rp = dest; rp != NULL; rp = rp->ai_next) {
         if (rp->ai_family == AF_INET) { // IPv4
-			// rp->ai_canonname = findHost(&argv[1]);
 			launchPing(icmp_socket, *rp, flags);
 			freeaddrinfo(dest);
 			return (0);

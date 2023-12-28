@@ -1,6 +1,4 @@
-#include "ping.h"
-
-
+#include "includes/ping.h"
 
 struct ip_header getIpv4Header(char * buffer){
 	struct ip_header *header = (struct ip_header *)buffer;

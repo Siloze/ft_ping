@@ -1,4 +1,4 @@
-#include "ping.h"
+#include "includes/ping.h"
 
 void sigHandler(int sig_num)
 {

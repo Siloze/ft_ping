@@ -1,4 +1,4 @@
-#include "ping.h"
+#include "includes/ping.h"
 
 size_t getInterval(){
 	struct timeval tv;

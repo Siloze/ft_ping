@@ -1,39 +1,41 @@
-SRCS_DIR		=	src/
-OBJS_DIR		=	obj/
-LIB_DIR			=	libft/
-BIN_DIR			=	bin/
+BIN				:=	bin/
+NAME			:=	ft_ping
+NAME_PATH		:=	$(addprefix $(BIN), $(NAME))
+MAKEFLAGS		+=	--silent
 
-LIBFT_SRCS		=	bin/libft.a
-LIB_PATH		=	$(addprefix $(LIB_DIR), $(LIBFT_SRCS))
+SDIR			:=	src/
+SRC				:=	$(shell find src -name "*.c")
 
-SRCS			=	main.c clock.c signal.c headers.c utils.c
-SRCS_PATH		=	$(addprefix $(SRCS_DIR), $(SRCS))
+ODIR			:=	obj/
+OBJ				:=	$(subst $(SDIR),$(ODIR), ${SRC:.c=.o})
 
-OBJS			=	${SRCS_PATH:.c=.o}
-OBJS_PATH		=	$(subst $(SRCS_DIR),$(OBJS_DIR), $(OBJS))
+LFT_DIR			:=	Lib/
+LFT				:=	$(addprefix $(LFT_DIR), libft.a)
 
-NAME			=	ft_ping
-NAME_PATH		=	$(addprefix $(BIN_DIR), $(NAME))
+CC				:=	gcc
+CFLG			:=	-Wall -Wextra -Werror
+LFLG			:=	-lm
 
-CC				=	gcc
-CFLAGS			=	-Wall -Wextra -Werror
+$(ODIR)%.o		: $(SDIR)%.c
+				mkdir -p $(subst $(SDIR),$(ODIR), $(shell dirname $<)/)
+				$(CC) $(CFLG) -c $< -o ${addprefix $(ODIR), ${<:$(SDIR)%.c=%.o}}
 
-$(OBJS_DIR)%.o	: $(SRCS_DIR)%.c
-				$(CC) $(CFLAGS) -c $< -o ${addprefix $(OBJS_DIR), ${<:$(SRCS_DIR)%.c=%.o}}
+${NAME_PATH}	: $(OBJ)
+				mkdir -p $(BIN)
+				cd $(LFT_DIR) && make all
+				$(CC) $(OBJ) -o $(NAME_PATH) $(LFT) $(LFLG)
 
-${NAME_PATH}	: ${OBJS_PATH}
-				mkdir -p bin
-				cd $(LIB_DIR) && make
-				$(CC) $(CFLAGS)  ${LIB_PATH} $(OBJS_PATH) -o $(NAME_PATH) -lm
-
-all		: $(NAME_PATH)
+all				: $(NAME_PATH)
 
 clean			:
-				rm -f $(OBJS_PATH)
+				cd $(LFT_DIR) && make clean
+				rm -rf $(ODIR)
 
 fclean			: clean
-				rm -f $(NAME_PATH)
+				cd $(LFT_DIR) && make fclean
+				rm -rf $(BIN)
 
 re				: fclean all
+
 
 .PHONY			: all clean fclean re
