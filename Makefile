@@ -16,7 +16,7 @@ NAME			=	ft_ping
 NAME_PATH		=	$(addprefix $(BIN_DIR), $(NAME))
 
 CC				=	gcc
-CFLAGS			=	-lm -Wall -Wextra -Werror
+CFLAGS			=	-Wall -Wextra -Werror
 
 $(OBJS_DIR)%.o	: $(SRCS_DIR)%.c
 				$(CC) $(CFLAGS) -c $< -o ${addprefix $(OBJS_DIR), ${<:$(SRCS_DIR)%.c=%.o}}
@@ -24,7 +24,7 @@ $(OBJS_DIR)%.o	: $(SRCS_DIR)%.c
 ${NAME_PATH}	: ${OBJS_PATH}
 				mkdir -p bin
 				cd $(LIB_DIR) && make
-				$(CC) $(CFLAGS)  ${LIB_PATH} $(OBJS_PATH) -o $(NAME_PATH)
+				$(CC) $(CFLAGS)  ${LIB_PATH} $(OBJS_PATH) -o $(NAME_PATH) -lm
 
 all		: $(NAME_PATH)
 
