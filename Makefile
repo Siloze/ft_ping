@@ -16,7 +16,7 @@ NAME			=	ft_ping
 NAME_PATH		=	$(addprefix $(BIN_DIR), $(NAME))
 
 CC				=	gcc
-CFLAGS			=	-Wall -Wextra -Werror
+CFLAGS			=	-lm -Wall -Wextra -Werror
 
 $(OBJS_DIR)%.o	: $(SRCS_DIR)%.c
 				$(CC) $(CFLAGS) -c $< -o ${addprefix $(OBJS_DIR), ${<:$(SRCS_DIR)%.c=%.o}}
