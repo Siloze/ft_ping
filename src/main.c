@@ -97,10 +97,11 @@ void printResponse(int *bytes, int ttl, char *buffer, char *ipv4, struct icmp_he
 		}
 }
 
-void increaseStack(int *stack, int value){
-	stack = realloc(stack, sizeof(int) * getStackSize(stack, -1) + 1);
-	stack[getStackSize(stack, -1) - 1] = value;
-	stack[getStackSize(stack, -1)] = -1;
+void increaseStack(int **stack, int value){
+	int stackSize = getStackSize(*stack, -1);
+	*stack = realloc(*stack, sizeof(int) * stackSize + 1);
+	stack[0][stackSize - 1] = value;
+	stack[0][stackSize] = -1;
 }
 
 size_t loop(int *receivBytes, struct msghdr *receiveHeader, char *buffer, char *ipv4, struct icmp_header sendImcp_header, int socket, int **msStack)
@@ -112,13 +113,7 @@ size_t loop(int *receivBytes, struct msghdr *receiveHeader, char *buffer, char *
 		*receivBytes = recvmsg(socket, receiveHeader, MSG_DONTWAIT);
 		if (!retry(*receivBytes, buffer, ipv4, sendImcp_header.seq))
 		{
-			int stackSize = getStackSize(*msStack, -1);
-			printf("getStackSize: %d\n", getStackSize(*msStack, -1));
-			*msStack = realloc(*msStack, sizeof(int) * stackSize + 1);
-			msStack[0][stackSize - 1] = getClock();
-			msStack[0][stackSize] = -1;
-			printf("NewGetStackSize: %d\n", getStackSize(*msStack, -1));
-			// increaseStack(msStack, getClock());
+			increaseStack(msStack, getClock());
 			break;
 		}
 	}
@@ -139,10 +134,7 @@ void flood_loop(int *receiveBytes, int *packetReceiv, int socket, struct msghdr 
 	while (*receiveBytes > 0)
 	{
 		stopClock(&time);
-		// increaseStack(&msStack, time);
-		*msStack = realloc(*msStack, sizeof(int) * getStackSize(*msStack, -1) + 1);
-		msStack[0][getStackSize(*msStack, -1) - 1] = getClock();
-		msStack[0][getStackSize(*msStack, -1)] = -1;
+		increaseStack(msStack, time);
 		write(1, "\b \b", 3);
 		*packetReceiv += 1;
 		*receiveBytes = recvmsg(socket, receiveHeader, MSG_DONTWAIT);
