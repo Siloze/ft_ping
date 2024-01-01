@@ -31,19 +31,6 @@ int getStackSize(int *stack, int stopNumber){
 	return (i + 1);
 }
 
-int checkResponse(int bytesReceiv, int ttl, char *buffer, size_t *flags){
-
-	struct icmp_header icmp = getIcmpHeader(buffer);
-
-	if (bytesReceiv == 0 || (bytesReceiv < 0 && ( errno == EAGAIN || errno == 60)))
-		return 1;
-	if (buffer[0] && (flags[FLAG_VERBOSE] || (icmp.type == ICMP_ECHOREPLY && icmp.code == 0)))
-		return 0;
-	if (ttl == 0 || getIpv4Header(buffer).ttl != ttl)
-		return 2;
-	return 3;
-}
-
 short retry(int size ,char *buffer, char *ip, int seq){
 
 	if (size == -1 && errno == EAGAIN ) //no response
@@ -69,6 +56,21 @@ void printHeader(char *ip, size_t *flags, int fd, struct addrinfo *ai){
 	printf("FT_PING: %s: %lu data bytes\n", ip, sizeof(struct icmp_header) + sizeof(struct ip_header) + sizeof(struct mac_header));
 }
 
+int checkResponse(int bytesReceiv, int ttl, char *buffer, size_t *flags){
+
+	struct icmp_header icmp = getIcmpHeader(buffer);
+
+	if (bytesReceiv == 0 || (bytesReceiv < 0 && ( errno == EAGAIN || errno == 60)))
+		return 1;
+	if (buffer[0] && (flags[FLAG_VERBOSE] || (icmp.type == ICMP_ECHOREPLY && icmp.code == 0)))
+		return 0;
+	if (icmp.type != ICMP_ECHOREPLY || icmp.code != 0)
+		return 3;
+	if (ttl == 0 || getIpv4Header(buffer).ttl != ttl)
+		return 2;
+	return 3;
+}
+
 void printResponse(int *bytes, int ttl, char *buffer, char *ipv4, struct icmp_header sendImcp_header, size_t *flags, int *packetStat, size_t receivTime){
 		switch (checkResponse(bytes[1], ttl, buffer, flags))
 		{
@@ -83,6 +85,11 @@ void printResponse(int *bytes, int ttl, char *buffer, char *ipv4, struct icmp_he
 			break;
 		case 2:
 			printf("TTL expired in transit for icmp_seq %d\n", sendImcp_header.seq);
+			if (flags[FLAG_VERBOSE])
+				sigHandler(0);
+			break;
+		case 3:
+			printf("Bad response for icmp_seq %d\n", sendImcp_header.seq);
 			if (flags[FLAG_VERBOSE])
 				sigHandler(0);
 			break;
