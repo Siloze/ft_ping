@@ -73,11 +73,11 @@ int checkResponse(int bytesReceiv, int ttl, char *buffer, size_t *flags){
 	return 3;
 }
 
-void printResponse(int *bytes, int ttl, char *buffer, char *ipv4, struct icmp_header sendImcp_header, size_t *flags, int *packetStat, size_t receivTime){
+void printResponse(int *bytes, int ttl, char *buffer, char *ipv4, struct icmp_header sendImcp_header, size_t *flags, int *packetStat, size_t receivTime, char *hostname){
 		switch (checkResponse(bytes[1], ttl, buffer, flags))
 		{
 		case 0:
-			printf("%lu bytes from %s: icmp_seq=%d ttl=%d time=%zums\n", sizeof(struct icmp_header) + sizeof(struct ip_header) + sizeof(struct mac_header), ipv4, sendImcp_header.seq, getIpv4Header(buffer).ttl, receivTime);
+			printf("%lu bytes from %s (%s): icmp_seq=%d ttl=%d time=%zums\n", sizeof(struct icmp_header) + sizeof(struct ip_header) + sizeof(struct mac_header), hostname, ipv4, sendImcp_header.seq, getIpv4Header(buffer).ttl, receivTime);
 			packetStat[1]++;
 			break;
 		case 1:
@@ -186,7 +186,7 @@ void printStat(int *packetStat, int *msStack, char *ipv4){
 	}
 }
 
-int launchPing(int socket, struct addrinfo dest, size_t *flags){
+int launchPing(int socket, struct addrinfo dest, size_t *flags, char *hostname){
 
 	int ttl = 0;
 	char ipv4[INET_ADDRSTRLEN];
@@ -237,7 +237,7 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 		packetStat[0]++;
 
 		if (!flags[FLAG_FLOOD])
-			printResponse(bytes, ttl, buffer, ipv4, sendImcp_header, flags, packetStat, receivTime);
+			printResponse(bytes, ttl, buffer, ipv4, sendImcp_header, flags, packetStat, receivTime, hostname);
 		increaseSequence(&sendImcp_header);
 
 	}
@@ -288,9 +288,16 @@ int main (int argc, char **argv){
 	 for (struct addrinfo *rp = dest; rp != NULL; rp = rp->ai_next) {
         if (rp->ai_family == AF_INET) { // IPv4
 			char ipv4[INET_ADDRSTRLEN];
+			char hostname[NI_MAXHOST];
+
 			ipv4ToString(((struct sockaddr_in *)rp->ai_addr)->sin_addr.s_addr, ipv4);
+
 			printHeader(ipv4, findHost(&argv[1]), flags ,icmp_socket, rp);
-			launchPing(icmp_socket, *rp, flags);
+
+			getnameinfo(rp->ai_addr, rp->ai_addrlen, hostname, NI_MAXHOST, NULL, 0, 0);
+	
+			launchPing(icmp_socket, *rp, flags, hostname);
+
 			freeaddrinfo(dest);
 			return (0);
         }
