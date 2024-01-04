@@ -16,9 +16,10 @@
 #define PACKET_SIZE 58
 #define MSG_BUFFER_SIZE 1024
 
-#define FLAGS_NB 2
+#define FLAGS_NB 3
 #define FLAG_VERBOSE 0
 #define FLAG_FLOOD 1
+#define FLAG_HELP 2
 
 struct mac_header{
     uint8_t dst_mac[6];

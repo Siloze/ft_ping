@@ -252,6 +252,7 @@ size_t *initFlags(char **argv){
 
 	flags[FLAG_VERBOSE] = findArg(argv, "-v") ? 1 : 0;
 	flags[FLAG_FLOOD] = findArg(argv, "-f") ? 1 : 0;
+	flags[FLAG_HELP] = findArg(argv, "-?") ? 1 : 0;
 
 	return (flags);
 }
@@ -261,10 +262,14 @@ int main (int argc, char **argv){
 	int icmp_socket;
 	struct addrinfo *dest;
 
-	flags = initFlags(&argv[1]);
 
 	if (argc < 2)
 		return (0);
+
+	flags = initFlags(&argv[1]);
+
+	if (flags[FLAG_HELP])
+		return (printf("Usage: ping [-v | -f] <ip/hostname>\n"));
 	if (!checkInput(&argv[1]))
 		return(printf("Bad input: ping [-v | -f] <ip/hostname>\n"));
 	if (argc > 2 && !ft_memchr(flags, 1, sizeof(size_t) * FLAGS_NB))
