@@ -289,7 +289,7 @@ int main (int argc, char **argv){
         if (rp->ai_family == AF_INET) { // IPv4
 			char ipv4[INET_ADDRSTRLEN];
 			ipv4ToString(((struct sockaddr_in *)rp->ai_addr)->sin_addr.s_addr, ipv4);
-			printHeader(ipv4, findHost(&argv[1]), flags ,icmp_socket, &dest);
+			printHeader(ipv4, findHost(&argv[1]), flags ,icmp_socket, rp);
 			launchPing(icmp_socket, *rp, flags);
 			freeaddrinfo(dest);
 			return (0);
