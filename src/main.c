@@ -280,10 +280,7 @@ int main (int argc, char **argv){
 	}
 	
 	if (getaddrinfo(findHost(&argv[1]), NULL, NULL, &dest) != 0) //get All adresse by hostname & ip
-	{
-		perror("getaddrinfo: ");
-		return (1);
-	}
+		return (printf("getaddrinfo: %s\n", gai_strerror(errno)));
 
 	 for (struct addrinfo *rp = dest; rp != NULL; rp = rp->ai_next) {
         if (rp->ai_family == AF_INET) { // IPv4
