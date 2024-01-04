@@ -45,13 +45,14 @@ short retry(int size ,char *buffer, char *ip, int seq){
 	return 0;
 }
 
-void printHeader(char *ip, size_t *flags, int fd, struct addrinfo *ai){
+void printHeader(char *ip, char *name, size_t *flags, int fd, struct addrinfo *ai){
 
 	if (flags[FLAG_VERBOSE])
 	{
 		printf("FT_PING: sock4.fd: %d (socktype: SOCK_RAW), hints.ai_family: AF_UNSPEC\n\nai->ai_family: ", fd);
-		printf("%s", ai->ai_family == AF_INET ? "AF_INET\n" : "AF_INET6\n");
-		
+		printf("%s", ai->ai_family == AF_INET ? "AF_INET,\n" : "AF_INET6,\n");
+		printf("ai->canonname: %s\n", name);
+
 	}
 
 	printf("FT_PING: %s: %lu data bytes\n", ip, sizeof(struct icmp_header) + sizeof(struct ip_header) + sizeof(struct mac_header));
@@ -209,8 +210,6 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 	iov[0].iov_len = sizeof(buffer);
 	receiveHeader.msg_iov = &iov[0];
 
-	printHeader(ipv4, flags, socket, &dest);
-
 	doRun();
 	while (*doRun())
 	{
@@ -288,6 +287,9 @@ int main (int argc, char **argv){
 
 	 for (struct addrinfo *rp = dest; rp != NULL; rp = rp->ai_next) {
         if (rp->ai_family == AF_INET) { // IPv4
+			char ipv4[INET_ADDRSTRLEN];
+			ipv4ToString(((struct sockaddr_in *)rp->ai_addr)->sin_addr.s_addr, ipv4);
+			printHeader(ipv4, findHost(&argv[1]), flags ,icmp_socket, &dest);
 			launchPing(icmp_socket, *rp, flags);
 			freeaddrinfo(dest);
 			return (0);
