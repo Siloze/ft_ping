@@ -63,7 +63,6 @@ struct msghdr initMsgHeader(char (*buffer)[MSG_BUFFER_SIZE]);
 void ipv4ToString(uint32_t ip, char *dest);
 unsigned short get_checksum(unsigned short *data, size_t length);
 void increaseSequence(struct icmp_header *header);
-int socket_error(int errcode);
 
 char *findArg(char **argv, char *arg);
 char *findHost(char **argv);

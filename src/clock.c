@@ -14,6 +14,15 @@ size_t * getRawClock(){
     return &clock;
 }
 
+size_t getClock(){
+    size_t clock = *getRawClock();
+
+    if (clock > 0) //is clock is running
+        return getInterval() - clock;
+    return (0);
+}
+
+
 void resetClock(){
     size_t *clock = getRawClock();
 
@@ -28,12 +37,4 @@ void startClock(){
 void stopClock(size_t *finalTimer){    
     *finalTimer = getClock();
     resetClock();
-}
-
-size_t getClock(){
-    size_t clock = *getRawClock();
-
-    if (clock > 0) //is clock is running
-        return getInterval() - clock;
-    return (0);
 }

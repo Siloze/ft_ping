@@ -32,11 +32,11 @@ int getStackSize(int *stack, int stopNumber){
 }
 
 short retry(int size ,char *buffer, char *ip, int seq){
+	char ipv4[INET_ADDRSTRLEN];
 
 	if (size == -1 && errno == EAGAIN ) //no response
 		return 1;
 
-	char ipv4[INET_ADDRSTRLEN];
 	ipv4ToString(getIpv4Header(buffer).src_ip, ipv4);
 	if (getIcmpHeader(buffer).seq != seq) // is response is not for this seq
 		return 1;
@@ -51,6 +51,7 @@ void printHeader(char *ip, size_t *flags, int fd, struct addrinfo *ai){
 	{
 		printf("FT_PING: sock4.fd: %d (socktype: SOCK_RAW), hints.ai_family: AF_UNSPEC\n\nai->ai_family: ", fd);
 		printf("%s", ai->ai_family == AF_INET ? "AF_INET\n" : "AF_INET6\n");
+		
 	}
 
 	printf("FT_PING: %s: %lu data bytes\n", ip, sizeof(struct icmp_header) + sizeof(struct ip_header) + sizeof(struct mac_header));
@@ -223,7 +224,7 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags){
 		bytes[0] = sendto(socket, packet, sizeof(packet), 0, dest.ai_addr, dest.ai_addrlen);
 		if (bytes[0] < 0)
 		{
-			fprintf(stderr, "packet send error\n");
+			perror("sendto: ");
 			break;
 		}
 
@@ -274,10 +275,16 @@ int main (int argc, char **argv){
 
 	icmp_socket = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if (icmp_socket < 0)
-		return (socket_error(errno));
+	{
+		perror("socket: ");
+		return (1);
+	}
 	
 	if (getaddrinfo(findHost(&argv[1]), NULL, NULL, &dest) != 0) //get All adresse by hostname & ip
-		return (fprintf(stderr, "getaddrinfo error\n"));
+	{
+		perror("getaddrinfo: ");
+		return (1);
+	}
 
 	 for (struct addrinfo *rp = dest; rp != NULL; rp = rp->ai_next) {
         if (rp->ai_family == AF_INET) { // IPv4

@@ -28,12 +28,6 @@ void increaseSequence(struct icmp_header *header)
 	header->checksum = get_checksum((unsigned short *)header, sizeof(*header));
 }
 
-int socket_error(int errcode){
-	if (errcode == 1)
-		return (printf("Can't open socket, please sure to have the right\n"));
-	return (0);
-}
-
 char *findArg(char **argv, char *arg){
 	int i = -1;
 
