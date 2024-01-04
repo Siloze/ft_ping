@@ -50,7 +50,7 @@ void printHeader(char *ip, char *name, size_t *flags, int fd, struct addrinfo *a
 	if (flags[FLAG_VERBOSE])
 	{
 		printf("FT_PING: sock4.fd: %d (socktype: SOCK_RAW), hints.ai_family: AF_UNSPEC\n\nai->ai_family: ", fd);
-		printf("%s", ai->ai_family == AF_INET ? "AF_INET,\n" : "AF_INET6,\n");
+		printf("%s", ai->ai_family == AF_INET ? "AF_INET, " : "AF_INET6, ");
 		printf("ai->canonname: %s\n", name);
 
 	}
