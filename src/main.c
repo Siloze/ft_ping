@@ -274,13 +274,10 @@ int main (int argc, char **argv){
 
 	icmp_socket = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if (icmp_socket < 0)
-	{
-		perror("socket: ");
-		return (1);
-	}
+		return (printf("Error: socket creation failed, please make sure to have the right to create a socket\n"));
 	
 	if (getaddrinfo(findHost(&argv[1]), NULL, NULL, &dest) != 0) //get All adresse by hostname & ip
-		return (printf("getaddrinfo: %s\n", gai_strerror(errno)));
+		return (printf("Error: wrong hostname or ip, or no internet connection\n"));
 
 	 for (struct addrinfo *rp = dest; rp != NULL; rp = rp->ai_next) {
         if (rp->ai_family == AF_INET) { // IPv4
