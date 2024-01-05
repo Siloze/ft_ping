@@ -166,23 +166,22 @@ float getStandartDeviation(int *msStack){
 }
 
 void printStat(int *packetStat, int *msStack, char *ipv4){
-	int averrage = 0;
+	int total = 0;
 	int max = 0;
 	int min = 99999;
 
 	for (int i = 0; i < getStackSize(msStack, -1) - 1; i++) {
-		averrage += msStack[i];
+		total += msStack[i];
 		if (min > msStack[i])
 			min = msStack[i];
 		if (max < msStack[i])
 			max = msStack[i];
 	}
-	averrage /= getStackSize(msStack, -1);
 	printf("\n--- %s ft_ping statistics ---\n", ipv4);
-    printf("%d packets transmitted, %d received, %d%% packet loss\n", packetStat[0], packetStat[1], (packetStat[0] - packetStat[1]) * 100 / packetStat[0]);
+    printf("%d packets transmitted, %d received, %d%% packet loss, time %dms\n", packetStat[0], packetStat[1], (packetStat[0] - packetStat[1]) * 100 / packetStat[0], total);
 
 	if (getStackSize(msStack, -1)){
-		printf("rtt min/avg/max/stddev = %d/%d/%d/%d ms\n", min, averrage, max, (int)getStandartDeviation(msStack));
+		printf("rtt min/avg/max/stddev = %d/%d/%d/%d ms\n", min, total / getStackSize(msStack, -1), max, (int)getStandartDeviation(msStack));
 	}
 }
 
