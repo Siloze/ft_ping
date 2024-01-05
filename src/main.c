@@ -129,21 +129,20 @@ size_t loop(int *receivBytes, struct msghdr *receiveHeader, char *buffer, char *
 	return (receivTime);
 }
 
-void flood_loop(int *receiveBytes, int *packetReceiv, int socket, struct msghdr *receiveHeader, int **msStack)
+void flood_loop(int *packetReceiv, int socket, struct msghdr *receiveHeader, int **msStack)
 {
 	size_t time = 0;
 
 	write(1, ".", 1);
 	usleep(10000); // 10ms
 	startClock();
-	*receiveBytes = recvmsg(socket, receiveHeader, MSG_DONTWAIT);
-	while (*receiveBytes > 0)
+	while (recvmsg(socket, receiveHeader, MSG_DONTWAIT) > 0)
 	{
+		usleep(10000); // 10ms
 		stopClock(&time);
 		increaseStack(msStack, time);
 		write(1, "\b \b", 3);
 		*packetReceiv += 1;
-		*receiveBytes = recvmsg(socket, receiveHeader, MSG_DONTWAIT);
 		startClock();
 	}
 	resetClock();
@@ -170,6 +169,7 @@ void printStat(int *packetStat, int *msStack, char *ipv4, size_t time){
 	int max = 0;
 	int min = 99999;
 
+	printf("stack size: %d\n", getStackSize(msStack, -1));
 	for (int i = 0; i < getStackSize(msStack, -1) - 1; i++) {
 		total += msStack[i];
 		if (min > msStack[i])
@@ -228,7 +228,7 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags, char *hostname){
 		}
 
 		if (flags[FLAG_FLOOD])
-			flood_loop(&bytes[1], &packetStat[1], socket, &receiveHeader, &msStack);
+			flood_loop(&packetStat[1], socket, &receiveHeader, &msStack);
 		else
 			receivTime = loop(&bytes[1], &receiveHeader, buffer, ipv4, sendImcp_header, socket, &msStack);
 		if (!ttl)
