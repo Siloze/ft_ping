@@ -169,7 +169,6 @@ void printStat(int *packetStat, int *msStack, char *ipv4, size_t time){
 	int max = 0;
 	int min = 99999;
 
-	printf("stack size: %d\n", getStackSize(msStack, -1));
 	for (int i = 0; i < getStackSize(msStack, -1) - 1; i++) {
 		total += msStack[i];
 		if (min > msStack[i])
