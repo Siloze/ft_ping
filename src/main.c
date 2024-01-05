@@ -164,7 +164,7 @@ float getStandartDeviation(int *msStack){
 	return (sqrt(standartDeviation));
 }
 
-void printStat(int *packetStat, int *msStack, char *ipv4, size_t time){
+void printStat(int *packetStat, int *msStack, char *ipv4){
 	int total = 0;
 	int max = 0;
 	int min = 99999;
