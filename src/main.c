@@ -165,7 +165,7 @@ float getStandartDeviation(int *msStack){
 	return (sqrt(standartDeviation));
 }
 
-void printStat(int *packetStat, int *msStack, char *ipv4){
+void printStat(int *packetStat, int *msStack, char *ipv4, size_t time){
 	int total = 0;
 	int max = 0;
 	int min = 99999;
@@ -178,7 +178,7 @@ void printStat(int *packetStat, int *msStack, char *ipv4){
 			max = msStack[i];
 	}
 	printf("\n--- %s ft_ping statistics ---\n", ipv4);
-    printf("%d packets transmitted, %d received, %d%% packet loss, time %dms\n", packetStat[0], packetStat[1], (packetStat[0] - packetStat[1]) * 100 / packetStat[0], total);
+    printf("%d packets transmitted, %d received, %d%% packet loss, time %dms\n", packetStat[0], packetStat[1], (packetStat[0] - packetStat[1]) * 100 / packetStat[0], (int)time);
 
 	if (getStackSize(msStack, -1)){
 		printf("rtt min/avg/max/stddev = %d/%d/%d/%d ms\n", min, total / getStackSize(msStack, -1), max, (int)getStandartDeviation(msStack));
@@ -210,6 +210,7 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags, char *hostname){
 	receiveHeader.msg_iov = &iov[0];
 
 	doRun();
+	size_t start = getInterval();
 	while (*doRun())
 	{
 		int bytes[2] = {0, 0};
@@ -240,7 +241,8 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags, char *hostname){
 		increaseSequence(&sendImcp_header);
 
 	}
-	printStat(packetStat, msStack, ipv4);
+	size_t end = getInterval();
+	printStat(packetStat, msStack, ipv4, end - start);
 	free(msStack);
 
 	return 0;

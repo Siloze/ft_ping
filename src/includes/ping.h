@@ -53,6 +53,7 @@ struct icmp_header {
 
 struct ip_header getIpv4Header(char * buffer);
 struct icmp_header getIcmpHeader(char * buffer);
+size_t getInterval();
 void startClock();
 void stopClock(size_t *finalTimer);
 size_t getClock();
