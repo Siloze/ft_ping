@@ -133,7 +133,6 @@ void flood_loop(int *packetReceiv, int socket, struct msghdr *receiveHeader, int
 {
 	size_t time = 0;
 
-	write(1, ".", 1);
 	usleep(10000); // 10ms
 	startClock();
 	while (recvmsg(socket, receiveHeader, MSG_DONTWAIT) > 0)
@@ -141,7 +140,6 @@ void flood_loop(int *packetReceiv, int socket, struct msghdr *receiveHeader, int
 		usleep(10000); // 10ms
 		stopClock(&time);
 		increaseStack(msStack, time);
-		write(1, "\b \b", 3);
 		*packetReceiv += 1;
 		startClock();
 	}
@@ -164,7 +162,7 @@ float getStandartDeviation(int *msStack){
 	return (sqrt(standartDeviation));
 }
 
-void printStat(int *packetStat, int *msStack, char *ipv4, size_t time){
+void printStat(int *packetStat, int *msStack, char *ipv4){
 	int total = 0;
 	int max = 0;
 	int min = 99999;
@@ -177,7 +175,7 @@ void printStat(int *packetStat, int *msStack, char *ipv4, size_t time){
 			max = msStack[i];
 	}
 	printf("\n--- %s ft_ping statistics ---\n", ipv4);
-    printf("%d packets transmitted, %d received, %d%% packet loss, time %dms\n", packetStat[0], packetStat[1], (packetStat[0] - packetStat[1]) * 100 / packetStat[0], (int)time);
+    printf("%d packets transmitted, %d received, %d%% packet loss\n", packetStat[0], packetStat[1], (packetStat[0] - packetStat[1]) * 100 / packetStat[0]);
 
 	if (getStackSize(msStack, -1)){
 		printf("rtt min/avg/max/stddev = %d/%d/%d/%d ms\n", min, total / getStackSize(msStack, -1), max, (int)getStandartDeviation(msStack));
@@ -209,7 +207,6 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags, char *hostname){
 	receiveHeader.msg_iov = &iov[0];
 
 	doRun();
-	size_t start = getInterval();
 	while (*doRun())
 	{
 		int bytes[2] = {0, 0};
@@ -227,7 +224,9 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags, char *hostname){
 		}
 
 		if (flags[FLAG_FLOOD])
+		{
 			flood_loop(&packetStat[1], socket, &receiveHeader, &msStack);
+		}
 		else
 			receivTime = loop(&bytes[1], &receiveHeader, buffer, ipv4, sendImcp_header, socket, &msStack);
 		if (!ttl)
@@ -240,8 +239,7 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags, char *hostname){
 		increaseSequence(&sendImcp_header);
 
 	}
-	size_t end = getInterval();
-	printStat(packetStat, msStack, ipv4, end - start);
+	printStat(packetStat, msStack, ipv4);
 	free(msStack);
 
 	return 0;
