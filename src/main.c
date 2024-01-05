@@ -133,6 +133,7 @@ void flood_loop(int *packetReceiv, int socket, struct msghdr *receiveHeader, int
 {
 	size_t time = 0;
 
+	write(1, ".", 1);
 	usleep(10000); // 10ms
 	startClock();
 	while (recvmsg(socket, receiveHeader, MSG_DONTWAIT) > 0)
@@ -140,6 +141,7 @@ void flood_loop(int *packetReceiv, int socket, struct msghdr *receiveHeader, int
 		usleep(10000); // 10ms
 		stopClock(&time);
 		increaseStack(msStack, time);
+		write(1, "\b \b", 3);
 		*packetReceiv += 1;
 		startClock();
 	}
@@ -162,7 +164,7 @@ float getStandartDeviation(int *msStack){
 	return (sqrt(standartDeviation));
 }
 
-void printStat(int *packetStat, int *msStack, char *ipv4){
+void printStat(int *packetStat, int *msStack, char *ipv4, size_t time){
 	int total = 0;
 	int max = 0;
 	int min = 99999;
@@ -224,9 +226,7 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags, char *hostname){
 		}
 
 		if (flags[FLAG_FLOOD])
-		{
 			flood_loop(&packetStat[1], socket, &receiveHeader, &msStack);
-		}
 		else
 			receivTime = loop(&bytes[1], &receiveHeader, buffer, ipv4, sendImcp_header, socket, &msStack);
 		if (!ttl)
