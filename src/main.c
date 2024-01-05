@@ -46,7 +46,9 @@ short retry(int size ,char *buffer, char *ip, int seq){
 }
 
 void printHeader(char *ip, char *name, size_t *flags, int fd, struct addrinfo *ai){
-
+	
+	int id = getpid();
+	printf("id : %d\n", id);
 	if (flags[FLAG_VERBOSE])
 	{
 		printf("FT_PING: sock4.fd: %d (socktype: SOCK_RAW), hints.ai_family: AF_UNSPEC\n\nai->ai_family: ", fd);
