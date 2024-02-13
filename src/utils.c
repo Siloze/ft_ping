@@ -21,11 +21,13 @@ unsigned short get_checksum(unsigned short *data, size_t length){
     return (unsigned short)(~sum);
 }
 
-void increaseSequence(struct icmp_header *header)
+void increaseSequence(char **packet)
 {
-	header->seq++;
-	header->checksum = 0;
-	header->checksum = get_checksum((unsigned short *)header, sizeof(*header));
+	struct icmp_header **header = (struct icmp_header **)packet;
+
+	header[0]->seq++;
+	header[0]->checksum = 0;
+	header[0]->checksum = get_checksum((unsigned short *)*packet, sizeof(struct icmp_header) + PACKET_SIZE);
 }
 
 char *findArg(char **argv, char *arg){

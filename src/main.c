@@ -36,7 +36,6 @@ short retry(int size ,char *buffer, char *ip, int seq){
 
 	if (size == -1 && errno == EAGAIN ) //no response
 		return 1;
-
 	ipv4ToString(getIpv4Header(buffer).src_ip, ipv4);
 	if (getIcmpHeader(buffer).seq != seq) // is response is not for this seq
 		return 1;
@@ -48,7 +47,7 @@ short retry(int size ,char *buffer, char *ip, int seq){
 void printHeader(char *ip, size_t *flags){
 	
 	int id = getpid();
-	printf("FT_PING: %s: %lu data bytes", ip, sizeof(struct icmp_header) + sizeof(struct ip_header) + sizeof(struct mac_header));
+	printf("FT_PING: %s: %d data bytes", ip, PACKET_SIZE);
 	if (flags[FLAG_VERBOSE])
 		printf(", id 0x%.4x = %d\n", id, id);
 	else
@@ -70,30 +69,30 @@ int checkResponse(int bytesReceiv, int ttl, char *buffer, size_t *flags){
 	return 3;
 }
 
-void printResponse(int *bytes, int ttl, char *buffer, char *ipv4, struct icmp_header sendImcp_header, size_t *flags, int *packetStat, size_t receivTime, char *hostname){
+void printResponse(int *bytes, int ttl, char *buffer, char *ipv4, struct icmp_header *sendImcp_header, size_t *flags, int *packetStat, size_t receivTime, char *hostname){
 		switch (checkResponse(bytes[1], ttl, buffer, flags))
 		{
 		case 0:
-			printf("%lu bytes from %s (%s): icmp_seq=%d ttl=%d time=%zums\n", sizeof(struct icmp_header) + sizeof(struct ip_header) + sizeof(struct mac_header), hostname, ipv4, sendImcp_header.seq, getIpv4Header(buffer).ttl, receivTime);
+			printf("%lu bytes from %s (%s): icmp_seq=%d ttl=%d time=%zums\n", bytes[1] - sizeof(struct icmp_header) - sizeof(struct mac_header), hostname, ipv4, sendImcp_header->seq, getIpv4Header(buffer).ttl, receivTime);
 			packetStat[1]++;
 			break;
 		case 1:
-			printf("Request timeout for icmp_seq %d\n", sendImcp_header.seq);
+			printf("Request timeout for icmp_seq %d\n", sendImcp_header->seq);
 			if (flags[FLAG_VERBOSE])
 				sigHandler(0);
 			break;
 		case 2:
-			printf("TTL expired in transit for icmp_seq %d\n", sendImcp_header.seq);
+			printf("TTL expired in transit for icmp_seq %d\n", sendImcp_header->seq);
 			if (flags[FLAG_VERBOSE])
 				sigHandler(0);
 			break;
 		case 3:
-			printf("Bad response for icmp_seq %d\n", sendImcp_header.seq);
+			printf("Bad response for icmp_seq %d\n", sendImcp_header->seq);
 			if (flags[FLAG_VERBOSE])
 				sigHandler(0);
 			break;
 		default:
-			printf("Request error for icmp_seq %d\n", sendImcp_header.seq);
+			printf("Request error for icmp_seq %d\n", sendImcp_header->seq);
 			if (flags[FLAG_VERBOSE] && !flags[FLAG_FLOOD])
 				sigHandler(0);
 			break;
@@ -107,14 +106,14 @@ void increaseStack(int **stack, int value){
 	stack[0][stackSize] = -1;
 }
 
-size_t loop(int *receivBytes, struct msghdr *receiveHeader, char *buffer, char *ipv4, struct icmp_header sendImcp_header, int socket, int **msStack)
+size_t loop(int *receivBytes, struct msghdr *receiveHeader, char *buffer, char *ipv4, struct icmp_header *sendImcp_header, int socket, int **msStack)
 {
 	size_t receivTime = 0;
 	startClock();
 	while (getClock() < 1000)
 	{
 		*receivBytes = recvmsg(socket, receiveHeader, MSG_DONTWAIT);
-		if (!retry(*receivBytes, buffer, ipv4, sendImcp_header.seq))
+		if (!retry(*receivBytes, buffer, ipv4, sendImcp_header->seq))
 		{
 			increaseStack(msStack, getClock());
 			break;
@@ -187,16 +186,13 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags, char *hostname){
 	char ipv4[INET_ADDRSTRLEN];
 	struct msghdr receiveHeader;
 	char buffer[MSG_BUFFER_SIZE];
-	struct icmp_header sendImcp_header;
+	char *sendImcp_header;
 
 	int *msStack = malloc(sizeof(int) * 1);
 	int packetStat[2] = {0, 0};
-	char packet[sizeof (struct icmp_header)];
-	msStack[0] = -1;
 
 	receiveHeader = initMsgHeader(&buffer);
-	sendImcp_header = initIcmpHeader(ICMP_ECHO);
-	ft_memset(&packet, 1, sizeof(packet));
+	sendImcp_header = initIcmpHeader(ICMP_ECHO, PACKET_SIZE);
 
 	ipv4ToString(((struct sockaddr_in *)dest.ai_addr)->sin_addr.s_addr, ipv4);
 
@@ -205,17 +201,17 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags, char *hostname){
 	iov[0].iov_len = sizeof(buffer);
 	receiveHeader.msg_iov = &iov[0];
 
+	msStack[0] = -1;
+
 	doRun();
 	while (*doRun())
 	{
+		ft_memset(&buffer, 0, MSG_BUFFER_SIZE);
+
 		int bytes[2] = {0, 0};
 		size_t receivTime = 0;
 
-		ft_memset(&buffer, 0, MSG_BUFFER_SIZE);
-		ft_memcpy(&packet, &sendImcp_header, sizeof(sendImcp_header));
-
-		//-----------PAQUET SEND---------
-		bytes[0] = sendto(socket, packet, sizeof(packet), 0, dest.ai_addr, dest.ai_addrlen);
+		bytes[0] = sendto(socket, sendImcp_header, sizeof(struct icmp_header) + PACKET_SIZE, 0, dest.ai_addr, dest.ai_addrlen);
 		if (bytes[0] < 0)
 		{
 			perror("sendto: ");
@@ -225,19 +221,19 @@ int launchPing(int socket, struct addrinfo dest, size_t *flags, char *hostname){
 		if (flags[FLAG_FLOOD])
 			flood_loop(&packetStat[1], socket, &receiveHeader, &msStack);
 		else
-			receivTime = loop(&bytes[1], &receiveHeader, buffer, ipv4, sendImcp_header, socket, &msStack);
+			receivTime = loop(&bytes[1], &receiveHeader, buffer, ipv4, (struct icmp_header *)sendImcp_header, socket, &msStack);
 		if (!ttl)
 			ttl = getIpv4Header(buffer).ttl;
 
 		packetStat[0]++;
 
 		if (!flags[FLAG_FLOOD])
-			printResponse(bytes, ttl, buffer, ipv4, sendImcp_header, flags, packetStat, receivTime, hostname);
+			printResponse(bytes, ttl, buffer, ipv4, (struct icmp_header *)sendImcp_header, flags, packetStat, receivTime, hostname);
 		increaseSequence(&sendImcp_header);
-
 	}
 	printStat(packetStat, msStack, ipv4);
 	free(msStack);
+	free(sendImcp_header);
 
 	return 0;
 }

@@ -59,13 +59,12 @@ void stopClock(size_t *finalTimer);
 size_t getClock();
 void resetClock();
 void sigHandler(int sig_num);
-struct icmp_header initIcmpHeader(uint8_t type);
+char *initIcmpHeader(uint8_t type, size_t dataSize);
 struct msghdr initMsgHeader(char (*buffer)[MSG_BUFFER_SIZE]);
 
 void ipv4ToString(uint32_t ip, char *dest);
 unsigned short get_checksum(unsigned short *data, size_t length);
-void increaseSequence(struct icmp_header *header);
-
+void increaseSequence(char **packet);
 char *findArg(char **argv, char *arg);
 char *findHost(char **argv);
 
